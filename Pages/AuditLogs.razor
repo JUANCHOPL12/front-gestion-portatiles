@@ -1,0 +1,113 @@
+@page "/audit-logs"
+@using CryptoVault.Client.DTOs
+@using CryptoVault.Client.Services
+@using CryptoVault.Client.State
+
+@inject ApiService ApiService
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<div class="audit-container">
+    <div class="audit-header d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="m-0">🛡️ Registro de Auditoría de Ciberseguridad</h2>
+            <small class="text-muted">Monitoreo de Eventos en Tiempo Real (SIEM/RBAC Audit)</small>
+        </div>
+        <button class="btn btn-outline-light btn-sm" @onclick='() => NavigationManager.NavigateTo("/vault")'>Volver a la Bóveda</button>
+    </div>
+
+    <!-- TARJETAS DE INDICADORES Y MÉTRICAS ACADÉMICAS CUN (G1: Riesgo, G5: WAF/IPS, G7: SIEM) -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-dark text-white p-3 border-info shadow-sm">
+                <small class="text-muted">Protección Perimetral (G5 CUN)</small>
+                <h6 class="mt-1">Firewall WAF / IPS Capa 7</h6>
+                <h4 class="text-info m-0">ACTIVO</h4>
+                <small class="text-success mt-1">✔ Filtrado Anti-SQLi / Anti-XSS</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark text-white p-3 border-warning shadow-sm">
+                <small class="text-muted">Evaluación de Amenazas (G1 CUN)</small>
+                <h6 class="mt-1">Nivel de Riesgo Global</h6>
+                <h4 class="text-warning m-0">BAJO (R = A × V)</h4>
+                <small class="text-muted mt-1">Mitigación Zero-Trust Activa</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark text-white p-3 border-success shadow-sm">
+                <small class="text-muted">Garantía de Disponibilidad (G1 CUN)</small>
+                <h6 class="mt-1">Estado de la Bóveda AES-256</h6>
+                <h4 class="text-success m-0">100% OPERATIVO</h4>
+                <small class="text-muted mt-1">Cifrado de Extremo a Extremo</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="audit-card">
+        <h4>Logs de Eventos del Sistema</h4>
+        @if (isLoading)
+        {
+            <p><em>Cargando registros de auditoría...</em></p>
+        }
+        else if (auditLogs.Count == 0)
+        {
+            <p class="text-muted">No se encontraron eventos de auditoría o no posee los permisos suficientes para consultarlos.</p>
+        }
+        else
+        {
+            <table class="audit-table table table-striped table-hover mt-3">
+                <thead>
+                    <tr>
+                        <th>Fecha y Hora (UTC)</th>
+                        <th>Acción</th>
+                        <th>Dirección IP</th>
+                        <th>Estado</th>
+                        <th>Detalle del Evento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in auditLogs)
+                    {
+                        <tr>
+                            <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td><strong>@log.Action</strong></td>
+                            <td><code>@log.IpAddress</code></td>
+                            <td>
+                                @if (log.IsSuccess)
+                                {
+                                    <span class="badge bg-success">EXITOSO</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">FALLIDO</span>
+                                }
+                            </td>
+                            <td>@log.Detail</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<AuditLogDto> auditLogs = new List<AuditLogDto>();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Protección de ruta por Rol (RBAC): Si no es Admin ni Auditor, expulsar a la bóveda
+        if (!AuthState.IsLoggedIn || (AuthState.UserRole != "Admin" && AuthState.UserRole != "Auditor"))
+        {
+            NavigationManager.NavigateTo("/vault");
+            return;
+        }
+
+        // 2. Cargar los logs desde la API
+        isLoading = true;
+        auditLogs = await ApiService.GetAuditLogsAsync();
+        isLoading = false;
+    }
+}

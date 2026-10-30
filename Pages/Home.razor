@@ -1,0 +1,10 @@
+﻿@page "/"
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirigir siempre a la pantalla de Login al cargar la ruta raíz
+        NavigationManager.NavigateTo("/login");
+    }
+}

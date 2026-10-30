@@ -1,0 +1,93 @@
+﻿@using CryptoVault.Client.State
+@using CryptoVault.Client.Services
+@inject AuthState AuthState
+@inject ApiService ApiService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">🔐 Bóveda CUN</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        
+        @if (!AuthState.IsLoggedIn)
+        {
+            <!-- OPCIÓN SOLO PARA USUARIOS SIN AUTENTICAR -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
+                    <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Iniciar Sesión
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <!-- OPCIONES PARA USUARIOS AUTENTICADOS -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="vault">
+                    <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span> Mi Bóveda AES-256
+                </NavLink>
+            </div>
+
+            @if (AuthState.UserRole == "Admin" || AuthState.UserRole == "Auditor")
+            {
+                <!-- OPCIÓN RESTRINGIDA A ROLES ADMINISTRATIVOS (RBAC) -->
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="audit-logs">
+                        <span class="bi bi-card-checklist-nav-menu" aria-hidden="true"></span> 🛡️ Auditoría SIEM
+                    </NavLink>
+                </div>
+            }
+
+            @if (AuthState.UserRole == "Admin")
+            {
+                <!-- OPCIÓN EXCLUSIVA PARA EL ADMINISTRADOR -->
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin-users">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> 👥 Gestión de Usuarios
+                    </NavLink>
+                </div>
+            }
+
+            <div class="nav-item px-3 mt-3">
+                <button class="btn btn-outline-danger w-100 text-start ps-3" @onclick="HandleLogout">
+                    🚪 Cerrar Sesión
+                </button>
+            </div>
+        }
+
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override void OnInitialized()
+    {
+        AuthState.OnStateChanged += StateHasChanged;
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void HandleLogout()
+    {
+        ApiService.ClearAuthToken();
+        AuthState.Logout();
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnStateChanged -= StateHasChanged;
+    }
+}

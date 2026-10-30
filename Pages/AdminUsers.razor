@@ -1,0 +1,128 @@
+@page "/admin-users"
+@using CryptoVault.Client.DTOs
+@using CryptoVault.Client.Services
+@using CryptoVault.Client.State
+
+@inject ApiService ApiService
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<div class="audit-container">
+    <div class="audit-header d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="m-0">👥 Gestión y Promoción de Usuarios (RBAC)</h2>
+            <small class="text-muted">Administración de Roles y Cuentas del Sistema</small>
+        </div>
+        <button class="btn btn-outline-light btn-sm" @onclick='() => NavigationManager.NavigateTo("/vault")'>Volver a la Bóveda</button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(alertMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @alertMessage
+            <button type="button" class="btn-close" @onclick="() => alertMessage = string.Empty"></button>
+        </div>
+    }
+
+    <div class="audit-card">
+        <h4>Usuarios Registrados</h4>
+        @if (isLoading)
+        {
+            <p><em>Cargando listado de usuarios...</em></p>
+        }
+        else if (users.Count == 0)
+        {
+            <p class="text-muted">No se encontraron usuarios o no posee los permisos suficientes.</p>
+        }
+        else
+        {
+            <table class="audit-table table table-striped table-hover mt-3 align-middle">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Estado MFA</th>
+                        <th>Rol Actual</th>
+                        <th>Acción / Cambiar Rol</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in users)
+                    {
+                        <tr>
+                            <td><strong>@u.Email</strong></td>
+                            <td>
+                                @if (u.IsMfaEnabled)
+                                {
+                                    <span class="badge bg-success">MFA Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-info text-dark">@u.Role</span>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm d-inline-block w-auto" 
+                                        @onchange="(e) => HandleRoleChange(u.Id, e.Value?.ToString())">
+                                    <option disabled selected>Cambiar rol...</option>
+                                    <option value="User">User</option>
+                                    <option value="Auditor">Auditor</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<UserManagementDto> users = new List<UserManagementDto>();
+    private bool isLoading = true;
+    private string alertMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Guard de navegación por RBAC: solo administradores
+        if (!AuthState.IsLoggedIn || AuthState.UserRole != "Admin")
+        {
+            NavigationManager.NavigateTo("/vault");
+            return;
+        }
+
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        users = await ApiService.GetUsersAsync();
+        isLoading = false;
+    }
+
+    private async Task HandleRoleChange(Guid userId, string? newRole)
+    {
+        if (string.IsNullOrEmpty(newRole)) return;
+
+        var dto = new ChangeRoleDto
+        {
+            UserId = userId,
+            NewRole = newRole
+        };
+
+        bool success = await ApiService.ChangeUserRoleAsync(dto);
+        if (success)
+        {
+            alertMessage = $"Rol actualizado a '{newRole}' exitosamente.";
+            await LoadUsers();
+        }
+        else
+        {
+            alertMessage = "Error al intentar cambiar el rol del usuario.";
+        }
+    }
+}

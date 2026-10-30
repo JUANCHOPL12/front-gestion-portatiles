@@ -1,0 +1,50 @@
+/* Estilos Exclusivos para el Menú de Navegación Lateral */
+.navbar-toggler[b-i71zgaf5p6] {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.top-row[b-i71zgaf5p6] {
+    height: 3.5rem;
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.navbar-brand[b-i71zgaf5p6] {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.nav-item[b-i71zgaf5p6] {
+    font-size: 0.9rem;
+    padding-bottom: 0.5rem;
+}
+
+.nav-item:first-of-type[b-i71zgaf5p6] {
+    padding-top: 1rem;
+}
+
+.nav-item:last-of-type[b-i71zgaf5p6] {
+    padding-bottom: 1rem;
+}
+
+.nav-item[b-i71zgaf5p6]  a {
+    color: #d7d7d7;
+    border-radius: 6px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+    padding: 0 1rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-item[b-i71zgaf5p6]  a.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.nav-item[b-i71zgaf5p6]  a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}

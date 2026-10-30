@@ -1,0 +1,70 @@
+/* Estilos Exclusivos para el Dashboard de la Bóveda */
+.vault-container {
+    max-width: 1100px;
+    margin: 30px auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.vault-header {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: #ffffff;
+    padding: 20px 25px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.vault-card {
+    background-color: #ffffff;
+    border: 1px solid #e1e8ed;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.vault-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.vault-table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    padding: 12px 15px;
+    border-bottom: 2px solid #dee2e6;
+    text-align: left;
+}
+
+.vault-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.btn-decrypt {
+    background-color: #17a2b8;
+    color: #ffffff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 0.88rem;
+    transition: background-color 0.2s ease;
+}
+
+.btn-decrypt:hover {
+    background-color: #138496;
+    color: #ffffff;
+}
+
+.decrypted-badge {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-weight: bold;
+    border: 1px solid #c3e6cb;
+}

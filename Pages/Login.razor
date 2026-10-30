@@ -1,0 +1,306 @@
+@page "/login"
+@using CryptoVault.Client.DTOs
+@using CryptoVault.Client.Services
+@using CryptoVault.Client.State
+
+@inject ApiService ApiService
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<div class="login-container">
+    <div class="card login-card">
+        <div class="login-header">
+            <h3>🔑 Bóveda Criptográfica</h3>
+            <small>Autenticación e Identidad Segura IAM</small>
+        </div>
+        <div class="card-body login-body">
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success" role="alert">
+                    @successMessage
+                </div>
+            }
+
+            @if (!isMfaStep && !isMfaSetupStep)
+            {
+                @if (!isRegisterMode)
+                {
+                    <!-- PASO 1: PASO INICIAL - CORREO Y CONTRASEÑA -->
+                    <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Correo Electrónico:</label>
+                            <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="estudiante@cun.edu.co"
+                                       autocomplete="username" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña:</label>
+                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control"
+                                       placeholder="********" autocomplete="current-password" />
+                        </div>
+
+                        <button type="submit" class="btn-primary-custom mt-2" disabled="@isProcessing">
+                            @(isProcessing ? "Verificando..." : "Iniciar Sesión")
+                        </button>
+                    </EditForm>
+
+                    <div class="text-center mt-3">
+                        <small>¿No tienes una cuenta aún?
+                            <span class="toggle-link" @onclick="ToggleMode">Regístrate aquí</span>
+                        </small>
+                    </div>
+                }
+                else
+                {
+                    <!-- REGISTRO DE CUENTA -->
+                    <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Correo Electrónico para Registro:</label>
+                            <InputText @bind-Value="registerModel.Email" class="form-control"
+                                       placeholder="nuevo.usuario@cun.edu.co" autocomplete="username" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña Segura:</label>
+                            <InputText @bind-Value="registerModel.Password" type="password" class="form-control"
+                                       placeholder="********" autocomplete="new-password" />
+                        </div>
+
+                        <button type="submit" class="btn-success-custom mt-2" disabled="@isProcessing">
+                            @(isProcessing ? "Creando Cuenta..." : "Registrar Cuenta")
+                        </button>
+                    </EditForm>
+
+                    <div class="text-center mt-3">
+                        <small>¿Ya tienes una cuenta?
+                            <span class="toggle-link" @onclick="ToggleMode">Inicia Sesión aquí</span>
+                        </small>
+                    </div>
+                }
+            }
+            else if (isMfaSetupStep)
+            {
+                <!-- PASO 2A: PRIMERA VEZ (ENROQUE CON QR) -->
+                <div class="qr-container text-center">
+                    <h5>📱 Configurar Autenticador MFA</h5>
+                    <p class="text-muted small">Escanee este código QR con Google Authenticator o Microsoft Authenticator:
+                    </p>
+                    
+                    @if (mfaSetupData != null && !string.IsNullOrEmpty(mfaSetupData.QrCodeUrl))
+                    {
+                        <div class="my-3 text-center">
+                            <img src="@mfaSetupData.QrCodeUrl" alt="Código QR MFA"
+                                 style="width: 220px; height: 220px; border: 2px solid #0d6efd; padding: 6px; border-radius: 10px; background-color: #ffffff; image-rendering: pixelated;" />
+                        </div>
+                        <div class="mt-2 text-center">
+                            <small class="d-block text-muted">O ingrese la clave secreta manualmente:</small>
+                            <span class="badge bg-secondary p-2 font-monospace"
+                                  style="font-size: 0.95rem;">@mfaSetupData.Secret</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="mt-3">
+                    <div class="mb-3">
+                        <label class="form-label">Ingrese el código de 6 dígitos de la app:</label>
+                        <input type="text" @bind="totpCodeInput" class="form-control text-center fs-4" placeholder="123456"
+                               maxlength="6" />
+                    </div>
+
+                    <button type="button" @onclick="HandleMfaVerification" class="btn-success-custom w-100"
+                            disabled="@isProcessing">
+                        @(isProcessing ? "Verificando..." : "Confirmar e Ingresar")
+                    </button>
+                </div>
+            }
+            else
+            {
+                <!-- PASO 2B: DESAFÍO TOTP HABITUAL -->
+                <div class="mt-3">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Autenticación Multifactor Requerida:</strong> Ingrese el código temporal de 6 dígitos de su
+                        aplicación Authenticator.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Código TOTP (6 dígitos):</label>
+                        <input type="text" @bind="totpCodeInput" class="form-control text-center fs-4" placeholder="123456"
+                               maxlength="6" />
+                    </div>
+
+                    <button type="button" @onclick="HandleMfaVerification" class="btn-success-custom mt-2"
+                            disabled="@isProcessing">
+                        @(isProcessing ? "Validando..." : "Verificar e Ingresar")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginDto loginModel = new LoginDto();
+    private RegisterDto registerModel = new RegisterDto();
+    private MfaSetupResponseDto? mfaSetupData;
+    
+    private Guid currentUserId = Guid.Empty;
+    private string currentUserRole = "User"; // Almacena el rol del usuario ("Admin", "Auditor", "User")
+    private string totpCodeInput = string.Empty;
+
+    private bool isRegisterMode = false;
+    private bool isMfaStep = false;
+    private bool isMfaSetupStep = false;
+    private bool isProcessing = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    private void ToggleMode()
+    {
+        isRegisterMode = !isRegisterMode;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+    }
+
+    private async Task HandleRegister()
+    {
+        isProcessing = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        var result = await ApiService.RegisterAsync(registerModel);
+
+        if (result != null && result.UserId != Guid.Empty)
+        {
+            isRegisterMode = false;
+            loginModel.Email = registerModel.Email;
+            loginModel.Password = string.Empty;
+            registerModel = new RegisterDto();
+
+            successMessage = "¡Cuenta creada con éxito! Por favor inicie sesión para vincular su doble factor (MFA).";
+        }
+        else
+        {
+            errorMessage = result?.Message ?? "Error al registrar la cuenta.";
+        }
+
+        isProcessing = false;
+    }
+
+    private async Task HandleLogin()
+    {
+        isProcessing = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        var result = await ApiService.LoginAsync(loginModel);
+
+        if (result != null && result.UserId != Guid.Empty)
+        {
+            currentUserId = result.UserId;
+        
+            // Guardar el rol retornado por la API
+            currentUserRole = !string.IsNullOrEmpty(result.Role) ? result.Role : "User";
+
+            if (!string.IsNullOrEmpty(result.Email))
+            {
+                loginModel.Email = result.Email;
+            }
+
+            if (result.IsMfaRequired)
+            {
+                // Usuario con MFA ya configurado previamente
+                isMfaStep = true;
+            }
+            else
+            {
+                // Primer inicio: Obtener código QR de la API para vincular MFA
+                var setupResult = await ApiService.SetupMfaAsync();
+
+                if (setupResult != null && !string.IsNullOrEmpty(setupResult.QrCodeUrl))
+                {
+                    mfaSetupData = setupResult;
+                    isMfaSetupStep = true;
+                    successMessage = "Escanee el código QR con su celular para vincular su cuenta.";
+                }
+                else
+                {
+                    errorMessage = "Error al obtener el código QR de la API.";
+                }
+            }
+        }
+        else
+        {
+            // 💡 AQUÍ ESTÁ EL CAMBIO: Usar el mensaje dinámico del resultado (HTTP 429 / 401 / WAF)
+            errorMessage = !string.IsNullOrEmpty(result?.Message)
+                ? result.Message
+                : "Credenciales inválidas.";
+        }
+
+        isProcessing = false;
+    }
+
+    private async Task HandleMfaVerification()
+    {
+        isProcessing = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        if (currentUserId == Guid.Empty)
+        {
+            errorMessage = "Error de sesión: Usuario no identificado. Inicie sesión de nuevo.";
+            isProcessing = false;
+            return;
+        }
+
+        string cleanCode = totpCodeInput?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(cleanCode) || cleanCode.Length != 6)
+        {
+            errorMessage = "Por favor ingrese exactamente 6 dígitos numéricos.";
+            isProcessing = false;
+            return;
+        }
+
+        var payload = new MfaVerifyDto
+        {
+            UserId = currentUserId,
+            Code = cleanCode
+        };
+
+        bool isSuccess = await ApiService.VerifyMfaAsync(payload);
+
+        if (isSuccess)
+        {
+            // 1. Guardar email y rol en AuthState
+            AuthState.SetUser(loginModel.Email, currentUserRole);
+    
+            // 2. Evaluar el rol ingresado
+            if (AuthState.UserRole == "Admin" || AuthState.UserRole == "Auditor")
+            {
+                NavigationManager.NavigateTo("/audit-logs");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/vault");
+            }
+            return;
+        }
+        else
+        {
+            errorMessage = "El código TOTP es incorrecto o ha expirado.";
+        }
+
+        isProcessing = false;
+    }
+}
